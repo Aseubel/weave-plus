@@ -1,0 +1,75 @@
+name: Build and Deploy to ACR
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+# Environment variables available to all jobs and steps in this workflow.
+env:
+  REGION_ID: cn-guangzhou
+  REGISTRY: crpi-5tzwiznwaw34lfca.cn-guangzhou.personal.cr.aliyuncs.com
+  NAMESPACE: aseubel
+  IMAGE: weave-plus
+  TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 步骤 1: 设置 Java 17 环境
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 步骤 2: 缓存 Maven 依赖
+      # 这是实现缓存的关键步骤
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          # 需要缓存的目录路径，~/.m2/repository 是 Maven 的本地仓库
+          path: ~/.m2/repository
+          # 缓存的唯一标识符。如果 pom.xml 文件内容没有变化，就会尝试恢复缓存
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          # 如果 key 没有命中，会使用 restore-keys 来查找旧的缓存
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 步骤 3: 使用 Maven 构建应用
+      # 这个步骤现在在工作流中执行，而不是在 Dockerfile 中
+      - name: Build with Maven
+        run: mvn -B package -pl weave-service/weave-user-service/weave-user-app -am -DskipTests
+
+      # 步骤 4: 登录阿里云容器镜像服务 ACR
+      - name: Login to ACR with the AccessKey pair
+        uses: aliyun/acr-login@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ALIYUN_ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}"
+
+      # 登录 aliyun container registry (可选，如果上一步成功，这一步可能多余)
+      - name: login to aliyun container registry
+        run: docker login --username="${{ secrets.ALIYUN_USERNAME }}" --password="${{ secrets.ALIYUN_PASSWORD }}" "$REGISTRY"
+
+      # 步骤 5: 构建并推送 Docker 镜像
+      - name: Build and push image to ACR
+        run: |
+          docker build --tag "$REGISTRY/$NAMESPACE/$IMAGE:$TAG" .
+          docker push "$REGISTRY/$NAMESPACE/$IMAGE:$TAG"
+
+      # 步骤 6: 扫描ACR中的镜像
+      - name: Scan image in ACR
+        uses: aliyun/acr-scan@v1
+        with:
+          region-id: "${{ env.REGION_ID }}"
+          access-key-id: "${{ secrets.ALIYUN_ACCESS_KEY_ID }}"
+          access-key-secret: "${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}"
+          repository: "${{ env.NAMESPACE }}/${{ env.IMAGE }}"
+          tag: "${{ env.TAG }}"
