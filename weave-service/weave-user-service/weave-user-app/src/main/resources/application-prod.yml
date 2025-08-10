@@ -1,0 +1,91 @@
+server:
+  port: 20611
+  tomcat:
+    threads:
+      max: 200        # 设定处理客户请求的线程的最大数目，决定了服务器可以同时响应客户请求的数,默认200
+      min-spare: 50   # 初始化线程数,最小空闲线程数,默认是10
+    accept-count: 10  # 等待队列长度
+
+spring:
+  application:
+    name: weave-user-service
+  cloud:
+    nacos:
+      server-addr: nacos:8848
+      discovery:
+        cluster-name: GZ # 集群名称
+      config:
+        server-addr: nacos:8848
+        timeout: 3000 # 超时时间，单位为毫秒默认3000
+        max-retry: 3 # 最大重试次数，默认0
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql:3306/weave_plus?useUnicode=true&characterEncoding=utf8&autoReconnect=true&zeroDateTimeBehavior=convertToNull&serverTimezone=UTC&useSSL=true
+    username: root
+    password: 123456
+  jpa:
+    hibernate:
+      ddl-auto: update #自动更新数据库表结构，默认none、可选值none、create、create-drop、validate、update
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 2MB
+      max-request-size: 10MB
+
+# 线程池配置
+thread:
+  pool:
+    executor:
+      config:
+        core-pool-size: 10
+        max-pool-size: 200
+        keep-alive-time: 10
+        block-queue-size: 5000
+        policy: CallerRunsPolicy
+
+#Redis 配置
+redis:
+  sdk:
+    config:
+      host: redis
+      port: 6379
+      pool-size: 10
+      min-idle-size: 5
+      idle-timeout: 30000
+      connect-timeout: 5000
+      retry-attempts: 3
+      retry-interval: 1000
+      ping-interval: 60000
+      keep-alive: true
+
+# JWT配置
+jwt:
+  secret: 4ligUANwjrxTBFxYesepp/sd32D5S4Igz7FwNDmfItPgNu8aCxnrCVe5LZebisL6J3jtGLMZF+aGDnM6vjPLFA==
+  access-token-expiration: 1800000 # 30分钟 (毫秒)
+  refresh-token-expiration: 604800000 # 7天 (毫秒)
+
+# 第三方登录配置
+third-party:
+  wechat:
+    app-id: your-wechat-app-id
+    app-secret: your-wechat-app-secret
+    redirect-uri: http://localhost:8080/api/auth/wechat/callback
+  qq:
+    app-id: your-qq-app-id
+    app-key: your-qq-app-key
+    redirect-uri: http://localhost:8080/api/auth/qq/callback
+
+# 短信配置
+sms:
+  provider: aliyun # 可选: aliyun, tencent
+  access-key: your-access-key
+  secret-key: your-secret-key
+  sign-name: 织梦平台
+  template-code: SMS_123456789
+
+# 应用配置
+app:
+  password: Weave123456 # 默认账户密码
+  file-path: D:\images\ # 文件上传路径
+  competition-vote-limit: 3 # 单个用户每天每个比赛的投票次数限制
+  get-file-api: http://localhost:20611/api/common/file/ # 获取文件API
